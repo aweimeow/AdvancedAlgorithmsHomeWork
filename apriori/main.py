@@ -7,9 +7,19 @@ import itertools
 
 class Apriori:
     def __init__(self, fname, minsup, minconf, minnum, layerlimit):
-        self.minnum = minnum
-        self.layerlimit = layerlimit
+        assert minnum or minsup
+        if minnum:
+            self.minnum = minnum
+        else:
+            self.minsup = minsup
+
+        self.minconf = minconf
+
+        if layerlimit is None:
+            self.layerlimit = 2
+
         self.loadfile(fname)
+        self.execute()
 
     def loadfile(self, fname):
         self.database = {}
@@ -23,11 +33,15 @@ class Apriori:
                     self.database[x] |= {index}
                 index += 1
 
+        if not hasattr(self, 'minnum'):
+            self.minnum = self.minsup * index
+
         self.layer = [{x: len(y) for x, y in self.database.items() if len(y)>=self.minnum}]
         delkey = list(set(self.database.keys()) - set(self.layer[0].keys()))
         for key in delkey:
             del self.database[key]
 
+    def execute(self):
         for index in range(self.layerlimit):
             layer = self.parselayer(self.layer[index], index + 2)
             if not layer:
@@ -76,7 +90,6 @@ def main():
     parser.add_argument('--minconf', type=float, help='Mininum Confidence')
     parser.add_argument('--layerlimit', type=int, help='Limit the layer num')
     parser.add_argument('--minnum', type=int, help='Mininum Number')
-    parser.set_defaults(minsup=0.5, minconf=0.5, minnum=10, layerlimit=10)
     args = parser.parse_args()
     tstart = time.time()
     a = Apriori(args.file, args.minsup, args.minconf, args.minnum,

@@ -90,3 +90,8 @@ ENV/
 
 # vim temp file
 *.swp
+
+# database for apriori
+database.db
+# debug for apriori
+debug.txt

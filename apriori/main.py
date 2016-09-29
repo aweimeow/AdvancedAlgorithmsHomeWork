@@ -36,20 +36,22 @@ class Apriori:
         if not hasattr(self, 'minnum'):
             self.minnum = self.minsup * index
 
-        self.layer = [{x: len(y) for x, y in self.database.items() if len(y)>=self.minnum}]
+        self.layer = [{x: len(y) for x, y in self.database.items() if len(y) >= self.minnum}]
         delkey = list(set(self.database.keys()) - set(self.layer[0].keys()))
         for key in delkey:
             del self.database[key]
 
+        print('Layer 0: %s' % len(self.layer[0]))
+
     def execute(self):
         for index in range(self.layerlimit):
             layer = self.parselayer(self.layer[index], index + 2)
+            print('Layer %s: %s' % ((index + 1), len(layer)))
             if not layer:
                 break
             else:
                 self.layer.append(layer)
 
-    # 2, 3, 3, 3 and 2 input
     def parselayer(self, layer, index):
         def ctable(layer, index):
             if index > 2:
@@ -62,13 +64,16 @@ class Apriori:
                 keys = layer.keys()
 
             l = list(itertools.combinations(keys, index))
+            leng = len(l)
+            x = 0
             if index > 2:
                 for candi in l:
+                    print('%s/%s -> %s, l length = %s' % (x, leng, str(candi), len(l)))
                     for item in itertools.combinations(candi, index - 1):
                         if item not in self.database:
                             l.remove(candi)
                             break
-
+                    x += 1
             return l
 
         next_layer = {}

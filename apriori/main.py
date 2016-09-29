@@ -1,13 +1,76 @@
 #! /usr/bin/python3
 
+import os
 import time
+import sqlite3
 import argparse
 import itertools
+
+class Database:
+    def __init__(self):
+        os.system('rm database.db; touch database.db')
+        self.filename = 'database.db'
+        self.connect = sqlite3.connect(self.filename)
+        self.cursor = self.connect.cursor()
+        self.inittable()
+
+    def inittable(self):
+        cmds = ["CREATE TABLE origin (id INT, item INT);",
+                "CREATE TABLE layer (num INT, itemset text, count INT);"]
+        for cmd in cmds:
+            self.cursor.execute(cmd)
+        self.connect.commit()
+
+    def insert_origin(self, dataid, items):
+        cmd = "INSERT INTO origin VALUES (%d, %d);"
+        self.cursor.execute(cmd % (dataid, items))
+
+    def insert_layer(self, num, itemset, count):
+        cmd = "INSERT INTO layer VALUES (%d, '%s', %d);"
+        self.cursor.execute(cmd % (num, itemset, count))
+
+    def do_first_layer(self, minnum):
+        cmd = ("SELECT item, a FROM (select item, count(id) as a "
+               "FROM origin GROUP BY item) WHERE a >= %s;" % minnum)
+        for data in self.cursor.execute(cmd).fetchall():
+            self.insert_layer(0, data[0], data[1])
+        self.commit()
+
+    def get_layer(self, num):
+        cmd = ("SELECT itemset FROM layer WHERE num = %d" % num)
+        data = []
+        for x in self.cursor.execute(cmd).fetchall():
+            data.append(str(x[0]))
+        return data
+
+    def get_candicate(self, linenum):
+        cmd = ("SELECT item FROM origin WHERE id = %d")
+        d = [[] for index in range(linenum)]
+        for index in range(linenum):
+            for x in self.cursor.execute(cmd % index).fetchall():
+                d[index].append(x[0])
+        self.candicate = d
+
+    def calc_intersection(self, l):
+        cmd = "SELECT id FROM origin WHERE item = %s" % l[0]
+        for x in l[1:]:
+            cmd = "SELECT id FROM origin WHERE id IN (%s) AND item = %s" % (cmd, x)
+        return len(self.cursor.execute(cmd).fetchall())
+
+    def print_layer(self, layer_num):
+        cmd = "SELECT count(*) FROM layer WHERE num = %d"
+        for i in range(layer_num):
+            x = self.cursor.execute(cmd % i).fetchall()[0][0]
+            print('Layer %s: %s itemsets' % (i, x))
+
+    def commit(self):
+        self.connect.commit()
 
 
 class Apriori:
     def __init__(self, fname, minsup, minconf, minnum, layerlimit):
         assert minnum or minsup
+        self.fname = fname
         if minnum:
             self.minnum = minnum
         else:
@@ -18,75 +81,62 @@ class Apriori:
         if layerlimit is None:
             self.layerlimit = 2
 
-        self.loadfile(fname)
-        self.execute()
+        self.db = Database()
+        self.loadfilefirst()
+        self.execute(1)
+        self.db.print_layer(self.layer_num)
 
-    def loadfile(self, fname):
-        self.database = {}
-        index = 0
-        with open(fname, 'r') as f:
-            for line in f:
-                for x in line.strip().split(', '):
-                    x = int(x)
-                    if x not in self.database:
-                        self.database[x] = set()
-                    self.database[x] |= {index}
-                index += 1
+    def loadfilefirst(self):
+        self.linenum = 0
+        with open(self.fname, 'r') as fout:
+            for line in fout:
+                for x in map(lambda x: int(x), line.strip().split(', ')):
+                    self.db.insert_origin(self.linenum, x)
+                self.linenum += 1
+
+        self.db.commit()
 
         if not hasattr(self, 'minnum'):
             self.minnum = self.minsup * index
 
-        self.layer = [{x: len(y) for x, y in self.database.items() if len(y) >= self.minnum}]
-        delkey = list(set(self.database.keys()) - set(self.layer[0].keys()))
-        for key in delkey:
-            del self.database[key]
+        self.db.do_first_layer(self.minnum)
+        self.db.get_candicate(self.linenum)
 
-        print('Layer 0: %s' % len(self.layer[0]))
+    def execute(self, layer_num):
+        l = []
+        for line in self.db.candicate:
+            l.extend(list(itertools.combinations(line, layer_num + 1)))
+        l = list(set(l))
+        check = self.db.get_layer(layer_num - 1)
 
-    def execute(self):
-        for index in range(self.layerlimit):
-            layer = self.parselayer(self.layer[index], index + 2)
-            print('Layer %s: %s' % ((index + 1), len(layer)))
-            if not layer:
-                break
-            else:
-                self.layer.append(layer)
+        leng = len(l)
 
-    def parselayer(self, layer, index):
-        def ctable(layer, index):
-            if index > 2:
-                keys = set()
-                for key in layer.keys():
-                    for k in key:
-                        keys |= {k}
-                keys = list(keys)
-            else:
-                keys = layer.keys()
 
-            l = list(itertools.combinations(keys, index))
-            leng = len(l)
-            x = 0
-            if index > 2:
-                for candi in l:
-                    print('%s/%s -> %s, l length = %s' % (x, leng, str(candi), len(l)))
-                    for item in itertools.combinations(candi, index - 1):
-                        if item not in self.database:
-                            l.remove(candi)
-                            break
-                    x += 1
-            return l
+        if layer_num == 1:
+            for candi in l:
+                if not (str(candi[0]) in check and str(candi[1]) in check):
+                    l.remove(candi)
+        else:
+            index = 0
+            for candi in l[:]:
+                for x in itertools.combinations(candi, layer_num):
+                    if str(x) not in check:
+                        l.remove(candi)
+                        break
+                index += 1
 
-        next_layer = {}
-        for keys in ctable(layer, index):
-            self.database[keys] = self.database[keys[0]].copy()
-            for key in keys[1:]:
-                self.database[keys] &= self.database[key]
+        if not l:
+            return
 
-            if len(self.database[keys]) < self.minnum:
-                del self.database[keys]
-            else:
-                next_layer[keys] = len(self.database[keys])
-        return next_layer
+        for candi in l:
+            count = self.db.calc_intersection(list(candi))
+            if count >= self.minnum:
+                self.db.insert_layer(layer_num, str(candi), count)
+
+        self.db.commit()
+        self.layer_num = layer_num
+        self.execute(layer_num + 1)
+
 
 def main():
     parser = argparse.ArgumentParser(description='Process args')
@@ -100,12 +150,7 @@ def main():
     a = Apriori(args.file, args.minsup, args.minconf, args.minnum,
                 args.layerlimit)
     tend = time.time()
-    total = 0
-    for x in range(len(a.layer)):
-        print("Layer %s, Len: %s" % (x, len(a.layer[x])))
-        total += len(a.layer[x])
-    print('Total Count: %s' % total)
-    print('Time Cost: %s' % (tend - tstart))
+    print('Times: %s secs' % (tend - tstart))
 
 if __name__ == '__main__':
     main()

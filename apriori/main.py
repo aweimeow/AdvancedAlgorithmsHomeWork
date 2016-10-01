@@ -51,9 +51,10 @@ class Database:
         self.candicate = d
 
     def calc_intersection(self, l):
-        cmd = "SELECT id FROM origin WHERE item = %s" % l[0]
+        cmd = "SELECT id FROM origin WHERE item = %s " % l[0]
         for x in l[1:]:
-            cmd = "SELECT id FROM origin WHERE id IN (%s) AND item = %s" % (cmd, x)
+            cmd += "OR item = %s " % x
+        cmd += "GROUP BY id HAVING count(id) = %s" % len(l)
         return len(self.cursor.execute(cmd).fetchall())
 
     def print_layer(self, layer_num):

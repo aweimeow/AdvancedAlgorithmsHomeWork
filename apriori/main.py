@@ -103,7 +103,7 @@ class Apriori:
         self.db.commit()
 
         if not hasattr(self, 'minnum'):
-            self.minnum = self.minsup * index
+            self.minnum = self.minsup * self.linenum
 
         self.db.do_first_layer(self.minnum)
         self.db.get_candicate(self.linenum)

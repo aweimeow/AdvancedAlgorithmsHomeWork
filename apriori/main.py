@@ -8,7 +8,6 @@ import itertools
 
 class Database:
     def __init__(self):
-        os.system('rm database.db; touch database.db')
         self.filename = 'database.db'
         self.connect = sqlite3.connect(self.filename)
         self.cursor = self.connect.cursor()
@@ -59,9 +58,14 @@ class Database:
 
     def print_layer(self, layer_num):
         cmd = "SELECT count(*) FROM layer WHERE num = %d"
-        for i in range(layer_num):
+        total = 0
+        for i in range(layer_num + 1):
             x = self.cursor.execute(cmd % i).fetchall()[0][0]
-            print('Layer %s: %s itemsets' % (i, x))
+            if x != 0:
+                total += x
+                print('Layer %s: %s itemsets' % (i, x))
+
+        print('Total: %s itemsets' % total)
 
     def commit(self):
         self.connect.commit()
@@ -69,6 +73,7 @@ class Database:
 
 class Apriori:
     def __init__(self, fname, minsup, minconf, minnum, layerlimit):
+        self.tstart = time.time()
         assert minnum or minsup
         self.fname = fname
         if minnum:
@@ -84,7 +89,7 @@ class Apriori:
         self.db = Database()
         self.loadfilefirst()
         self.execute(1)
-        self.db.print_layer(self.layer_num)
+        print('Times: %s secs' % (time.time() - self.tstart))
 
     def loadfilefirst(self):
         self.linenum = 0
@@ -103,27 +108,33 @@ class Apriori:
         self.db.get_candicate(self.linenum)
 
     def execute(self, layer_num):
-        l = []
-        for line in self.db.candicate:
-            l.extend(list(itertools.combinations(line, layer_num + 1)))
-        l = list(set(l))
-        check = self.db.get_layer(layer_num - 1)
-
-        leng = len(l)
-
+        def strtuple_to_set(l):
+            r = []
+            for x in l:
+                r.append(set([int(y) for y in x[1:-1].split(', ')]))
+            return r
 
         if layer_num == 1:
-            for candi in l:
-                if not (str(candi[0]) in check and str(candi[1]) in check):
-                    l.remove(candi)
+            l = []
+            check = [{int(x)} for x in self.db.get_layer(layer_num - 1)]
+            for x in itertools.combinations(check, 2):
+                l.append(x[0] | x[1])
+
         else:
-            index = 0
-            for candi in l[:]:
-                for x in itertools.combinations(candi, layer_num):
-                    if str(x) not in check:
-                        l.remove(candi)
-                        break
-                index += 1
+            l = []
+            check = strtuple_to_set(self.db.get_layer(layer_num - 1))
+            d = {}
+            for x in itertools.combinations(check, layer_num):
+                g = x[0] | x[1]
+                if len(g) == layer_num + 1:
+                    key = tuple(sorted(list(g)))
+                    if key not in d:
+                        d[key] = 0
+                    d[key] += 1
+
+            for key, value in d.items():
+                if value == layer_num + 1:
+                    l.append(set(key))
 
         if not l:
             return
@@ -146,11 +157,11 @@ def main():
     parser.add_argument('--layerlimit', type=int, help='Limit the layer num')
     parser.add_argument('--minnum', type=int, help='Mininum Number')
     args = parser.parse_args()
-    tstart = time.time()
+    os.system('rm database.db; touch database.db')
     a = Apriori(args.file, args.minsup, args.minconf, args.minnum,
                 args.layerlimit)
-    tend = time.time()
-    print('Times: %s secs' % (tend - tstart))
+
+    a.db.print_layer(a.layer_num)
 
 if __name__ == '__main__':
     main()

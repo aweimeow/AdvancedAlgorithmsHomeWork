@@ -11,6 +11,7 @@ class Database:
         self.filename = 'database.db'
         self.connect = sqlite3.connect(self.filename)
         self.cursor = self.connect.cursor()
+        self.layer = {x:{} for x in range(10)}
         self.inittable()
 
     def inittable(self):
@@ -25,8 +26,11 @@ class Database:
         self.cursor.execute(cmd % (dataid, items))
 
     def insert_layer(self, num, itemset, count):
+        """
         cmd = "INSERT INTO layer VALUES (%d, '%s', %d);"
         self.cursor.execute(cmd % (num, itemset, count))
+        """
+        self.layer[num][itemset] = count
 
     def do_first_layer(self, minnum):
         cmd = ("SELECT item, a FROM (select item, count(id) as a "
@@ -36,11 +40,14 @@ class Database:
         self.commit()
 
     def get_layer(self, num):
+        return self.layer[num].keys()
+        """
         cmd = ("SELECT itemset FROM layer WHERE num = %d" % num)
         data = []
         for x in self.cursor.execute(cmd).fetchall():
             data.append(str(x[0]))
         return data
+        """
 
     def get_candicate(self, linenum):
         cmd = ("SELECT item FROM origin WHERE id = %d")
@@ -89,6 +96,7 @@ class Apriori:
 
         self.db = Database()
         self.loadfilefirst()
+        print(self.db.layer)
         self.execute(1)
         print('Times: %s secs' % (time.time() - self.tstart))
 
@@ -106,7 +114,7 @@ class Apriori:
             self.minnum = self.minsup * self.linenum
 
         self.db.do_first_layer(self.minnum)
-        self.db.get_candicate(self.linenum)
+        #self.db.get_candicate(self.linenum)
 
     def execute(self, layer_num):
         def strtuple_to_set(l):
@@ -144,6 +152,8 @@ class Apriori:
             count = self.db.calc_intersection(list(candi))
             if count >= self.minnum:
                 self.db.insert_layer(layer_num, str(candi), count)
+
+        return
 
         self.db.commit()
         self.layer_num = layer_num

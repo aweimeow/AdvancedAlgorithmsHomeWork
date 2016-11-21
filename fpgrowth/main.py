@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 from element import Node, Tree, Database
 
-MINI = 3
+MINI = 20
 result = []
 
 def iterbranch(node, key=None):
@@ -56,7 +56,7 @@ def itertree(tree, key=None):
         print(i, len(list(filter(lambda x: len(x) == i, result))))
 
 if __name__ == '__main__':
-    d = Database('T15I7N0.5KD1K.data')
+    d = Database('T10I10N0.1KD1K.data')
     d.set_minimum(MINI)
     d.loaddb()
     tree = d.buildtree()

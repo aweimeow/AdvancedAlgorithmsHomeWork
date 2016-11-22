@@ -9,6 +9,9 @@ class Node:
         self.parent = None
         self.child = {}
 
+    def __str__(self):
+        return '<Node %s: %s>' % (self.name, self.value)
+
     def addChild(self, nodename):
         node = Node(nodename, 1)
         self.child[nodename] = node
@@ -35,15 +38,15 @@ class Tree:
         head = self.root
         while namelist:
             name = namelist.pop(0)
-            if self.root.checkChild(name):
-                head = self.root.getChild(name)
+            if head.checkChild(name):
+                head = head.getChild(name)
                 head.increase_value()
             else:
-                namelist.append(name)
+                namelist.insert(0, name)
                 break
 
         while namelist:
-            name = namelist.pop()
+            name = namelist.pop(0)
             head = head.addChild(name)
             if not name in self.headtable:
                 self.headtable[name] = []
@@ -65,6 +68,15 @@ class Database:
 
     def loaddb(self):
         d = {}
+        # """
+        with open(self.filename, 'r') as fout:
+            for line in fout:
+                l = line.strip().split(',')
+                for e in l:
+                    if e not in d:
+                        d[e] = 0
+                    d[e] += 1
+        """
         with open(self.filename, 'rb') as fout:
             byte = self.loadgarbage(fout)
             n = self.loadint(fout)
@@ -79,11 +91,22 @@ class Database:
                 if byte == 0:
                     break
                 n = self.loadint(fout)
-
+        """
         self.d = {k:v for k, v in d.items() if v >= self.mini}
 
     def buildtree(self):
         tree = Tree()
+        # """
+        with open(self.filename, 'r') as fout:
+            for line in fout:
+                l = []
+                c = line.strip().split(',')
+                for e in c:
+                    if e in self.d:
+                        l.append(e)
+                l = sorted(l, key=lambda x: (self.d[x], x), reverse=True)
+                tree.addsequence(l)
+        """
         with open(self.filename, 'rb') as fout:
             byte = self.loadgarbage(fout)
             n = self.loadint(fout)
@@ -99,5 +122,5 @@ class Database:
                 if byte == 0:
                     break
                 n = self.loadint(fout)
-
+        """
         return tree

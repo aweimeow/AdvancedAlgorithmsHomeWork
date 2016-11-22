@@ -1,27 +1,29 @@
 #! /usr/bin/python3
 from element import Node, Tree, Database
 
-MINI = 20
+MINI = 3
 result = []
 
 def iterbranch(node, key=None):
     global result
 
     # Don't iter if upper to root
-    if node.parent.name == 'ROOT':
-        result.append(key | {node.name})
+    if node.name == 'ROOT':
         return
 
     node_list = []
-    while node.parent.name != 'ROOT':
-        node = node.parent
+    while node.name != 'ROOT':
         node_list.append(node)
+        node = node.parent
 
     for item in node_list:
-        iterbranch(item, key | {item.name})
+        result.append(key | {item.name})
+        iterbranch(item.parent, key | {item.name})
 
 
 def itertree(tree, key=None):
+    global result
+
     # Iter headtable items
     for nodename, nodelist in tree.headtable.items():
         subtree = Tree()
@@ -45,18 +47,22 @@ def itertree(tree, key=None):
 
         # Build Tree
         for data in data_list:
-            data.sort(key=lambda x: count_dict[x])
+            data.sort(key=lambda x: (count_dict[x]))
             subtree.addsequence(data)
 
         # Iterator node
+        result.append({nodename})
         for node in subtree.headtable[nodename]:
-            iterbranch(node, key={nodename})
+            iterbranch(node.parent, key={nodename})
 
-    for i in range(1, 11):
+    #print(list(filter(lambda x: len(x) == 2, result)))
+    for i in range(1, 6):
         print(i, len(list(filter(lambda x: len(x) == i, result))))
+        print('\t', list(filter(lambda x: len(x) == i, result)))
 
 if __name__ == '__main__':
-    d = Database('T10I10N0.1KD1K.data')
+    # d = Database('T10I10N0.1KD1K.data')
+    d = Database('test.txt')
     d.set_minimum(MINI)
     d.loaddb()
     tree = d.buildtree()

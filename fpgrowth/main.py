@@ -1,8 +1,8 @@
 #! /usr/bin/python3
 from element import Node, Tree, Database
 
-MINI = 3
-result = []
+MINI = 20
+result = set()
 
 def iterbranch(node, key=None):
     global result
@@ -17,7 +17,7 @@ def iterbranch(node, key=None):
         node = node.parent
 
     for item in node_list:
-        result.append(key | {item.name})
+        result.add(tuple(sorted(key | {item.name})))
         iterbranch(item.parent, key | {item.name})
 
 
@@ -47,22 +47,20 @@ def itertree(tree, key=None):
 
         # Build Tree
         for data in data_list:
-            data.sort(key=lambda x: (count_dict[x]))
+            # data.sort(key=lambda x: (count_dict[x]))
             subtree.addsequence(data)
 
         # Iterator node
-        result.append({nodename})
+        result.add(tuple([nodename]))
         for node in subtree.headtable[nodename]:
             iterbranch(node.parent, key={nodename})
 
-    #print(list(filter(lambda x: len(x) == 2, result)))
-    for i in range(1, 6):
+    for i in range(1, 20):
         print(i, len(list(filter(lambda x: len(x) == i, result))))
-        print('\t', list(filter(lambda x: len(x) == i, result)))
 
 if __name__ == '__main__':
-    # d = Database('T10I10N0.1KD1K.data')
-    d = Database('test.txt')
+    d = Database('T10I10N0.1KD1K.data')
+    # d = Database('test.txt')
     d.set_minimum(MINI)
     d.loaddb()
     tree = d.buildtree()

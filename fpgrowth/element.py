@@ -67,7 +67,7 @@ class Database:
 
     def loaddb(self):
         d = {}
-        """
+        # """
         with open(self.filename, 'r') as fout:
             for line in fout:
                 l = line.strip().split(',')
@@ -90,12 +90,12 @@ class Database:
                 if byte == 0:
                     break
                 n = self.loadint(fout)
-        # """
+        """
         self.d = {k:v for k, v in d.items() if v >= self.mini}
 
     def buildtree(self):
         tree = Tree()
-        """
+        # """
         with open(self.filename, 'r') as fout:
             for line in fout:
                 l = []
@@ -121,5 +121,5 @@ class Database:
                 if byte == 0:
                     break
                 n = self.loadint(fout)
-        # """
+        """
         return tree

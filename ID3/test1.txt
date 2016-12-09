@@ -1,0 +1,7 @@
+Size
+├─(S)──	Yes
+├─(L)──	No
+└─(M)──	Like
+        	├─(Cat)──	No
+        	└─(Dog)──	Yes
+

@@ -1,0 +1,15 @@
+Outlook
+├─(Rain)──	Temperature
+│		├─(Mild)──	Wind
+│		│		├─(Weak)──	Yes
+│		│		└─(Strong)──	No
+│		├─(Cool)──	No
+│		└─(Hot)──	No
+├─(Overcast)──	Yes
+└─(Sunny)──	Wind
+        	├─(Weak)──	Temperature
+        	│		├─(Mild)──	Yes
+        	│		├─(Cool)──	No
+        	│		└─(Hot)──	Yes
+        	└─(Strong)──	No
+
